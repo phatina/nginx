@@ -20,15 +20,19 @@ LABEL maintainer="Peter Hatina <peter@hatina.eu>" \
 
 ENV NGINX_VERSION=1.19.0
 
+COPY files/autoindex-sort.patch /tmp
+
 RUN \
   build_pkgs="build-base linux-headers openssl-dev pcre-dev wget zlib-dev" && \
   runtime_pkgs="ca-certificates openssl pcre zlib tzdata git" && \
   apk --no-cache add ${build_pkgs} ${runtime_pkgs} && \
+  echo ${SRCDIR} && \
   cd /tmp && \
   wget https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
   tar xzf nginx-${NGINX_VERSION}.tar.gz && \
   cd /tmp/nginx-${NGINX_VERSION} && \
   sed -i "s/#define NGX_HTTP_AUTOINDEX_NAME_LEN.*/#define NGX_HTTP_AUTOINDEX_NAME_LEN 100/g" src/http/modules/ngx_http_autoindex_module.c && \
+  patch -p1 < /tmp/autoindex-sort.patch && \
   ./configure \
     --prefix=/etc/nginx \
     --sbin-path=/usr/sbin/nginx \
@@ -66,7 +70,7 @@ RUN \
     --with-stream_realip_module \
     --with-http_slice_module \
     --with-http_v2_module && \
-  make && \
+  make -j8 && \
   make install && \
   sed -i -e 's/#access_log  logs\/access.log  main;/access_log \/dev\/stdout;/' -e 's/#error_log  logs\/error.log  notice;/error_log stderr notice;/' /etc/nginx/nginx.conf && \
   addgroup -S nginx && \
